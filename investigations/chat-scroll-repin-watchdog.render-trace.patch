@@ -1,0 +1,82 @@
+diff --git a/OpenLens/Services/RenderTrace.swift b/OpenLens/Services/RenderTrace.swift
+new file mode 100644
+index 0000000..e0c3ba9
+--- /dev/null
++++ b/OpenLens/Services/RenderTrace.swift
+@@ -0,0 +1,38 @@
++#if DEBUG
++import Foundation
++
++/// Temporary diagnostic for the scene-update watchdog kill (`0x8BADF00D`) seen on device: the
++/// main thread spent ten seconds inside one SwiftUI update, and the session count (67) rules out
++/// the work being merely expensive. This counts body evaluations per view so a re-render loop
++/// shows up as a number rather than being inferred from a stack.
++///
++/// Off unless the app is launched with `OPENLENS_TRACE_RENDER`. Delete once the loop is found.
++enum RenderTrace {
++    static let isEnabled = ProcessInfo.processInfo.arguments.contains("OPENLENS_TRACE_RENDER")
++
++    private static var counts: [String: Int] = [:]
++    private static var details: [String: String] = [:]
++    private static var windowStart = Date()
++    /// A view redrawing more often than this in one second is not responding to user input.
++    private static let suspiciousRate = 30
++
++    /// Call as the first statement of a `body`. `detail` is evaluated only when something is
++    /// reported, so it can name the inputs worth comparing between iterations.
++    static func record(_ name: String, detail: @autoclosure () -> String = "") {
++        guard isEnabled else { return }
++        counts[name, default: 0] += 1
++        details[name] = detail()
++
++        let now = Date()
++        let elapsed = now.timeIntervalSince(windowStart)
++        guard elapsed >= 1 else { return }
++        let busy = counts.filter { $0.value >= suspiciousRate }.sorted { $0.value > $1.value }
++        for (view, count) in busy {
++            print("[render-trace] \(view) ran \(count)x in \(String(format: "%.1f", elapsed))s — \(details[view] ?? "")")
++        }
++        counts.removeAll()
++        details.removeAll()
++        windowStart = now
++    }
++}
++#endif
+diff --git a/OpenLens/Views/ChatView.swift b/OpenLens/Views/ChatView.swift
+index 242bd28..5acebab 100644
+--- a/OpenLens/Views/ChatView.swift
++++ b/OpenLens/Views/ChatView.swift
+@@ -91,6 +91,9 @@ struct ChatView: View {
+     }
+ 
+     var body: some View {
++        #if DEBUG
++        let _ = RenderTrace.record("ChatView", detail: "session=\(chatClient.currentSession?.id ?? "-") messages=\(chatClient.messages.count)")
++        #endif
+         VStack(spacing: 0) {
+             ChatMessagesListView(
+                 chatClient: chatClient
+@@ -2854,6 +2857,9 @@ private struct ChatMessagesListView: View {
+     private let scrollToBottomVisibilityThreshold: CGFloat = 56
+ 
+     var body: some View {
++        #if DEBUG
++        let _ = RenderTrace.record("ChatMessagesList", detail: "messages=\(chatClient.messages.count) content=\(chatClient.contentVersion) timeline=\(chatClient.timelineVersion)")
++        #endif
+         ScrollViewReader { proxy in
+             ZStack(alignment: .bottomTrailing) {
+                 ScrollView {
+diff --git a/OpenLens/Views/SessionsListView.swift b/OpenLens/Views/SessionsListView.swift
+index bf6dacb..a4846f7 100644
+--- a/OpenLens/Views/SessionsListView.swift
++++ b/OpenLens/Views/SessionsListView.swift
+@@ -259,6 +259,9 @@ struct SessionsListView: View {
+     // MARK: - Body
+ 
+     var body: some View {
++        #if DEBUG
++        let _ = RenderTrace.record("SessionsList", detail: "servers=\(sources.count) filter=\(serverFilterID ?? "-")/\(workspaceFilterID ?? "-") loaded=\(sessionsByServer.mapValues(\.count)) state=\(String(describing: viewState))")
++        #endif
+         presentationContent
+             .scrollEdgeEffectStyle(.soft, for: .bottom)
+         .background(isSidebar ? Color.clear : Color.appBackground)
