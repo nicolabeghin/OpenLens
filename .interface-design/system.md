@@ -107,4 +107,22 @@ content — group headers use weight, not size, to separate from rows.
   v1 date rows, iPad sidebar selection) are covered by keeping status
   metadata bounded: `ExecutionStatusView(isCompact: true)` never wraps
   (`lineLimit(1)` + `fixedSize`) and yields nothing to the title.
+- `ServerFilterCapsule` extends `GlassToolbarCapsule` rather than
+  reimplementing it — two hit areas in one capsule (label opens the popover,
+  a separate glyph clears the filter), the small one enlarged with negative
+  padding since the capsule itself is too short for 44pt. New toolbar
+  controls should extend `GlassToolbarCapsule` the same way before
+  hand-rolling glass chrome.
+- `ServerRowStatus` resolves color through a `tone` enum
+  (`success`/`warning`/`danger`/`neutral`) rather than switching straight to
+  a `Color` — the state and its paint are different concerns, and the enum
+  stays comparable/testable while `Color` does not. Prefer this indirection
+  for new status-like enums over inlining the color switch (c.f.
+  `OCExecutionState.color`, which does not, and is harder to test).
+- A parity baseline recorded before a batch of changes goes stale silently —
+  nothing fails until someone runs the script. `e43c304`/`8682fbe`/`74ec1a1`
+  each deliberately changed the single-server list after
+  `af0a947` recorded the baseline, and the gate stayed red from the first of
+  those commits onward with no one noticing. Regenerate baselines as part of
+  landing a layout change, not as a separate catch-up step.
 
