@@ -761,7 +761,7 @@ struct SessionsListView: View {
             if let server = label.server {
                 ServerBadge(tag: server)
                 Text("\u{00B7}")
-                    .font(.system(size: 12, design: .rounded))
+                    .font(theme.typography.captionRounded)
                     .foregroundStyle(Color.appSecondary)
             }
             Text(label.workspace)
@@ -1256,7 +1256,7 @@ private struct NewSessionSheet: View {
                 .padding(.top, 2)
 
             Text(AppText.newSessionWorkspaceSourceNote)
-                .font(.system(size: 12, design: .rounded))
+                .font(theme.typography.captionRounded)
                 .foregroundStyle(Color.appSecondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
